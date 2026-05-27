@@ -1,4 +1,4 @@
-NG SkillCheck - AI Evaluation Engine
+#NG SkillCheck - AI Evaluation Engine
 
 An AI-powered skill evaluation application designed to benchmark Resumes, Pre-Work documents, and GitHub repositories against custom career tracks.
 
