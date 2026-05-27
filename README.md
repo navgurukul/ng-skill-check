@@ -18,13 +18,13 @@ Follow these simple steps to run the application on your local machine:
 
 Open your terminal, navigate to the frontend folder, and run:
 
-# Navigate to frontend folder
+## Navigate to frontend folder
 cd frontend
 
-# Install all dependencies
+## Install all dependencies
 npm install
 
-# Start the frontend server (Runs on http://localhost:5173)
+## Start the frontend server (Runs on http://localhost:5173)
 npm run dev
 
 
@@ -32,19 +32,19 @@ npm run dev
 
 Open a new terminal window, navigate to the backend folder, and run:
 
-# Navigate to backend folder
+## Navigate to backend folder
 cd backend
 
-# Create a virtual environment
+## Create a virtual environment
 python3 -m venv venv
 
-# Activate the virtual environment
-# On Linux/macOS:
+## Activate the virtual environment
+## On Linux/macOS:
 source venv/bin/activate
-# On Windows (CMD):
-# venv\Scripts\activate
+## On Windows (CMD):
+## venv\Scripts\activate
 
-# Install Python packages
+## Install Python packages
 pip install -r requirements.txt
 
 
