@@ -9,7 +9,9 @@ import Dashboard from './pages/Dashboard';
 function App() {
   const [step, setStep] = useState(1);
   const [track, setTrack] = useState('');
-  const [type, setType] = useState(''); 
+  const [type, setType] = useState('');
+  const [uploadData, setUploadData] = useState(null);
+  const [evaluationResult, setEvaluationResult] = useState(null); 
 
   const timelineSteps = [
     { id: 1, label: 'Track' },
@@ -41,9 +43,9 @@ function App() {
         <div className="w-full max-w-[1400px] flex justify-center">
           {step === 1 && <TrackSelection onNext={(t) => { setTrack(t); setStep(2); }} />}
           {step === 2 && <TypeSelection onNext={(ty) => { setType(ty); setStep(3); }} onBack={() => setStep(1)} selectedTrack={track} />}
-          {step === 3 && <UploadPage onNext={() => setStep(4)} onBack={() => setStep(2)} selectedTrack={track} selectedType={type} />}
-          {step === 4 && <ProcessingView onComplete={() => setStep(5)} />}
-          {step === 5 && <Dashboard onReset={() => { setTrack(''); setType(''); setStep(1); }} />}
+          {step === 3 && <UploadPage onNext={(data) => { setUploadData(data); setStep(4); }} onBack={() => setStep(2)} selectedTrack={track} selectedType={type} />}
+          {step === 4 && <ProcessingView track={track} type={type} uploadData={uploadData} onComplete={(result) => { setEvaluationResult(result); setStep(5); }} />}
+          {step === 5 && <Dashboard data={evaluationResult} onReset={() => { setTrack(''); setType(''); setUploadData(null); setEvaluationResult(null); setStep(1); }} />}
         </div>
       </main>
     </div>

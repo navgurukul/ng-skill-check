@@ -19,32 +19,61 @@ export default function ProcessingView({ track, type, uploadData, onComplete }) 
     }, 150);
 
     const runEvaluationPipeline = async () => {
-      const formData = new FormData();
-      formData.append("track", track);
-      formData.append("evaluation_type", type);
-      
-      if (type === 'repo') {
-        formData.append("repo_url", uploadData.repoUrl);
-      } else {
-        formData.append("file", uploadData.file);
-      }
-
       try {
+        // Validation logging
+        console.log('[PIPELINE START] Initializing evaluation pipeline');
+        console.log('Track:', track);
+        console.log('Type:', type);
+        console.log('UploadData:', uploadData);
+
+        if (!track || !type || !uploadData) {
+          throw new Error(`Missing required data: track=${!!track}, type=${!!type}, uploadData=${!!uploadData}`);
+        }
+
+        console.log('[STEP 1] Creating FormData object');
+        const formData = new FormData();
+        formData.append("track", track);
+        formData.append("evaluation_type", type);
+        
+        if (type === 'repo') {
+          console.log('[STEP 2] Adding repository URL:', uploadData.repoUrl);
+          formData.append("repo_url", uploadData.repoUrl);
+        } else {
+          console.log('[STEP 2] Adding file:', uploadData.file?.name, 'Size:', uploadData.file?.size, 'bytes');
+          if (!uploadData.file) {
+            throw new Error('File object is missing from uploadData');
+          }
+          formData.append("file", uploadData.file);
+        }
+
+        console.log('[STEP 3] Sending request to backend...');
         const response = await fetch("http://localhost:8000/api/evaluate", {
           method: "POST",
           body: formData,
         });
 
-        if (!response.ok) throw new Error("DeepSeek Engine returned an empty stack verification pattern.");
+        console.log('[STEP 4] Response status:', response.status, response.statusText);
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('[ERROR] Backend error response:', errorText);
+          throw new Error(`Backend Error: ${response.status} - ${errorText}`);
+        }
         
+        console.log('[STEP 5] Parsing JSON response');
         const deepseekResult = await response.json();
+        console.log('[STEP 6] Evaluation result received:', deepseekResult);
         
         setProgress(100);
         clearInterval(interval);
         
+        console.log('[SUCCESS] Evaluation completed successfully');
         setTimeout(() => onComplete(deepseekResult), 600);
 
       } catch (err) {
+        console.error('[ERROR] Pipeline failed:', err);
+        console.error('Error message:', err.message);
+        console.error('Full error:', err);
         setError(err.message || "Failed connecting to local execution thread.");
         clearInterval(interval);
       }

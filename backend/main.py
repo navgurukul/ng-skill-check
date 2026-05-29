@@ -7,18 +7,19 @@ from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from openai import OpenAI
 from dotenv import load_dotenv
+from prompts import get_system_prompt
 
 
 load_dotenv()
 
 
-NVIDIA_API_KEY = os.getenv("NVIDIA_API_KEY") 
-if not NVIDIA_API_KEY:
-    raise RuntimeError("CRITICAL ERROR: NVIDIA_API_KEY is missing in .env file.")
+DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY") 
+if not DEEPSEEK_API_KEY:
+    raise RuntimeError("CRITICAL ERROR: DEEPSEEK_API_KEY is missing in .env file.")
 
 client = OpenAI(
-    api_key=NVIDIA_API_KEY,
-    base_url="https://integrate.api.nvidia.com/v1"
+    api_key=DEEPSEEK_API_KEY,
+    base_url="https://api.deepseek.com/v1"
 )
 
 app = FastAPI(title="NG SkillCheck Clean AI Engine - Optimized")
@@ -31,33 +32,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-SYSTEM_PROMPT = """
-You are an uncompromising Senior Technical Interviewer and AI Evaluator at NavGurukul. 
-Your job is to strictly evaluate the provided text against the standards of the selected career track.
-
-CRITICAL INSTRUCTIONS:
-1. Ground Reality Checks: Only give credit for skills explicitly verified in the text.
-2. Strict Scoring: Do not generate high or generic scores. Average work must receive scores between 40-60.
-3. Rejection Rule: If the text is empty or completely irrelevant, set "is_relevant_document" to false, overall score below 15, and flag "Irrelevant Document Detected".
-4. Output Format: Return ONLY a raw, valid JSON object matching the template below. Do not wrap output in ```json markdown formatting block wrappers. No conversational text filler.
-
-Expected JSON Template structure:
-{
-  "score": 56,
-  "relevance": 61,
-  "confidence": 82,
-  "technical_understanding": 54,
-  "problem_solving": 48,
-  "project_quality": 45,
-  "career_readiness": 43,
-  "strengths": ["Clean presentation structure"],
-  "weaknesses": ["Limited depth in main stack"],
-  "missing_skills": ["LangChain", "Transformers"],
-  "feedback": "Evaluation successfully completed against the chosen track rubric rules."
-}
-"""
 
 
 def extract_text_from_pdf(file_bytes):
@@ -91,37 +65,66 @@ async def handle_evaluation(
     file: UploadFile = File(None),
     repo_url: str = Form(None)
 ):
+    print(f"[BACKEND] Received evaluation request: track={track}, type={evaluation_type}")
+    print(f"[BACKEND] File present: {file is not None}, Repo URL present: {repo_url is not None}")
+    
     extracted_text = ""
 
-    if evaluation_type in ['resume', 'prework']:
-        if not file:
-            raise HTTPException(status_code=400, detail="PDF asset file data is missing.")
-        file_bytes = await file.read()
-        extracted_text = extract_text_from_pdf(file_bytes)
-    
-    elif evaluation_type == 'repo':
-        if not repo_url:
-            raise HTTPException(status_code=400, detail="Repository path variable is empty.")
-        extracted_text = extract_context_from_github(repo_url)
-
-    if not extracted_text.strip():
-        raise HTTPException(status_code=400, detail="Extracted document body content is completely empty.")
-
-    optimized_context = extracted_text[:8000]
-
-   
     try:
+        if evaluation_type in ['resume', 'prework']:
+            print(f"[BACKEND] Processing {evaluation_type} PDF")
+            if not file:
+                raise HTTPException(status_code=400, detail="PDF asset file data is missing.")
+            print(f"[BACKEND] Reading file: {file.filename}")
+            file_bytes = await file.read()
+            print(f"[BACKEND] File size: {len(file_bytes)} bytes")
+            extracted_text = extract_text_from_pdf(file_bytes)
+            print(f"[BACKEND] Extracted text length: {len(extracted_text)} characters")
+        
+        elif evaluation_type == 'repo':
+            print(f"[BACKEND] Processing GitHub repository: {repo_url}")
+            if not repo_url:
+                raise HTTPException(status_code=400, detail="Repository path variable is empty.")
+            extracted_text = extract_context_from_github(repo_url)
+            print(f"[BACKEND] Repository context: {extracted_text[:100]}...")
+
+        if not extracted_text.strip():
+            raise HTTPException(status_code=400, detail="Extracted document body content is completely empty.")
+
+        print(f"[BACKEND] Text extraction successful, length: {len(extracted_text)}")
+        optimized_context = extracted_text[:8000]
+        print(f"[BACKEND] Optimized context length: {len(optimized_context)}")
+
+        print(f"[BACKEND] Calling DeepSeek API with {track} role evaluation...")
+        system_prompt = get_system_prompt(track)
+        print(f"[BACKEND] Using {track.upper()} Engineer evaluation criteria")
+        
         response = client.chat.completions.create(
-            model="meta/llama-3.1-70b-instruct",
+            model="deepseek-chat",
             messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": f"Track: {track}\nType: {evaluation_type}\n\nContent:\n{optimized_context}"}
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": f"Track: {track}\nEvaluation Type: {evaluation_type}\n\nContent to Evaluate:\n{optimized_context}"}
             ],
-            temperature=0.1,
-            max_tokens=1000 
+            temperature=0.2,
+            max_tokens=2500,
+            top_p=0.9
         )
         
+        print(f"[BACKEND] DeepSeek response received")
         raw_output = response.choices[0].message.content.strip()
-        return json.loads(raw_output)
+        print(f"[BACKEND] Raw output length: {len(raw_output)}")
+        print(f"[BACKEND] Parsing JSON...")
+        result = json.loads(raw_output)
+        print(f"[BACKEND] Evaluation successful: {result.get('score', 'N/A')} points")
+        return result
+    except json.JSONDecodeError as je:
+        print(f"[BACKEND] JSON parsing error: {str(je)}")
+        raise HTTPException(status_code=500, detail=f"Invalid JSON from DeepSeek: {str(je)}")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Llama Generation Engine Error: {str(e)}")
+        print(f"[BACKEND] Unexpected error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Evaluation Error: {str(e)}")
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
