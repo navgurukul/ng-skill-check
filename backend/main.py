@@ -96,8 +96,9 @@ async def handle_evaluation(
         print(f"[BACKEND] Optimized context length: {len(optimized_context)}")
 
         print(f"[BACKEND] Calling DeepSeek API with {track} role evaluation...")
-        system_prompt = get_system_prompt(track)
-        print(f"[BACKEND] Using {track.upper()} Engineer evaluation criteria")
+        system_prompt = get_system_prompt(track, evaluation_type)
+        eval_type_label = "Resume" if evaluation_type == "resume" else "Prework/Project" if evaluation_type == "prework" else "GitHub Repository"
+        print(f"[BACKEND] Using {track.upper()} Engineer + {eval_type_label} evaluation criteria")
         
         response = client.chat.completions.create(
             model="deepseek-chat",
