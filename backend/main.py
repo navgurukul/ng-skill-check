@@ -45,17 +45,47 @@ def extract_text_from_pdf(file_bytes):
         raise HTTPException(status_code=400, detail=f"Failed to read PDF file: {str(e)}")
 
 def extract_context_from_github(repo_url: str):
-    if "[github.com/](https://github.com/)" in repo_url:
-        clean_path = repo_url.split("[github.com/](https://github.com/)")[-1].strip("/")
-        api_url = f"[https://api.github.com/repos/](https://api.github.com/repos/){clean_path}/contents"
+    """
+    Simple GitHub extraction: README + dependencies only
+    """
+    try:
+        # Parse: https://github.com/owner/repo.git
+        repo_url_clean = repo_url.replace("https://github.com/", "").replace(".git", "").strip()
+        if "/" not in repo_url_clean:
+            return f"Repository: {repo_url_clean}"
+        
+        owner, repo = repo_url_clean.split("/")[:2]
+        base_api = f"https://api.github.com/repos/{owner}/{repo}"
+        headers = {"Accept": "application/vnd.github.v3.raw"}
+        
+        content = []
+        
+        # Get README
         try:
-            res = requests.get(api_url, timeout=10)
-            if res.status_code == 200:
-                files = [item["name"] for item in res.json()]
-                return f"GitHub Codebase files detected in root: {', '.join(files)}. Check architecture constraints."
-        except Exception:
+            for readme_file in ["README.md", "readme.md", "README.txt"]:
+                r = requests.get(f"{base_api}/contents/{readme_file}", headers=headers, timeout=5)
+                if r.status_code == 200:
+                    content.append(r.text[:1500])
+                    break
+        except:
             pass
-    return f"Target GitHub Remote Pointer Repository: {repo_url}"
+        
+        # Get requirements.txt or package.json
+        try:
+            for dep_file in ["requirements.txt", "package.json"]:
+                r = requests.get(f"{base_api}/contents/{dep_file}", headers=headers, timeout=5)
+                if r.status_code == 200:
+                    content.append(f"\nDependencies ({dep_file}):\n" + r.text[:1000])
+                    break
+        except:
+            pass
+        
+        if content:
+            return "\n".join(content)
+        else:
+            return f"Repository found: {owner}/{repo}"
+    except Exception as e:
+        return f"Repository: {repo_url}"
 
 # 5. The Main Core Route
 @app.post("/api/evaluate")
