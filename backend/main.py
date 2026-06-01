@@ -7,18 +7,19 @@ from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from openai import OpenAI
 from dotenv import load_dotenv
+from prompts import get_system_prompt
 
 
 load_dotenv()
 
 
-NVIDIA_API_KEY = os.getenv("NVIDIA_API_KEY") 
-if not NVIDIA_API_KEY:
-    raise RuntimeError("CRITICAL ERROR: NVIDIA_API_KEY is missing in .env file.")
+DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY") 
+if not DEEPSEEK_API_KEY:
+    raise RuntimeError("CRITICAL ERROR: DEEPSEEK_API_KEY is missing in .env file.")
 
 client = OpenAI(
-    api_key=NVIDIA_API_KEY,
-    base_url="https://integrate.api.nvidia.com/v1"
+    api_key=DEEPSEEK_API_KEY,
+    base_url="https://api.deepseek.com/v1"
 )
 
 app = FastAPI(title="NG SkillCheck Clean AI Engine - Optimized")
@@ -33,33 +34,6 @@ app.add_middleware(
 )
 
 
-SYSTEM_PROMPT = """
-You are an uncompromising Senior Technical Interviewer and AI Evaluator at NavGurukul. 
-Your job is to strictly evaluate the provided text against the standards of the selected career track.
-
-CRITICAL INSTRUCTIONS:
-1. Ground Reality Checks: Only give credit for skills explicitly verified in the text.
-2. Strict Scoring: Do not generate high or generic scores. Average work must receive scores between 40-60.
-3. Rejection Rule: If the text is empty or completely irrelevant, set "is_relevant_document" to false, overall score below 15, and flag "Irrelevant Document Detected".
-4. Output Format: Return ONLY a raw, valid JSON object matching the template below. Do not wrap output in ```json markdown formatting block wrappers. No conversational text filler.
-
-Expected JSON Template structure:
-{
-  "score": 56,
-  "relevance": 61,
-  "confidence": 82,
-  "technical_understanding": 54,
-  "problem_solving": 48,
-  "project_quality": 45,
-  "career_readiness": 43,
-  "strengths": ["Clean presentation structure"],
-  "weaknesses": ["Limited depth in main stack"],
-  "missing_skills": ["LangChain", "Transformers"],
-  "feedback": "Evaluation successfully completed against the chosen track rubric rules."
-}
-"""
-
-
 def extract_text_from_pdf(file_bytes):
     try:
         pdf_reader = pypdf.PdfReader(io.BytesIO(file_bytes))
@@ -71,17 +45,47 @@ def extract_text_from_pdf(file_bytes):
         raise HTTPException(status_code=400, detail=f"Failed to read PDF file: {str(e)}")
 
 def extract_context_from_github(repo_url: str):
-    if "[github.com/](https://github.com/)" in repo_url:
-        clean_path = repo_url.split("[github.com/](https://github.com/)")[-1].strip("/")
-        api_url = f"[https://api.github.com/repos/](https://api.github.com/repos/){clean_path}/contents"
+    """
+    Simple GitHub extraction: README + dependencies only
+    """
+    try:
+        # Parse: https://github.com/owner/repo.git
+        repo_url_clean = repo_url.replace("https://github.com/", "").replace(".git", "").strip()
+        if "/" not in repo_url_clean:
+            return f"Repository: {repo_url_clean}"
+        
+        owner, repo = repo_url_clean.split("/")[:2]
+        base_api = f"https://api.github.com/repos/{owner}/{repo}"
+        headers = {"Accept": "application/vnd.github.v3.raw"}
+        
+        content = []
+        
+        # Get README
         try:
-            res = requests.get(api_url, timeout=10)
-            if res.status_code == 200:
-                files = [item["name"] for item in res.json()]
-                return f"GitHub Codebase files detected in root: {', '.join(files)}. Check architecture constraints."
-        except Exception:
+            for readme_file in ["README.md", "readme.md", "README.txt"]:
+                r = requests.get(f"{base_api}/contents/{readme_file}", headers=headers, timeout=5)
+                if r.status_code == 200:
+                    content.append(r.text[:1500])
+                    break
+        except:
             pass
-    return f"Target GitHub Remote Pointer Repository: {repo_url}"
+        
+        # Get requirements.txt or package.json
+        try:
+            for dep_file in ["requirements.txt", "package.json"]:
+                r = requests.get(f"{base_api}/contents/{dep_file}", headers=headers, timeout=5)
+                if r.status_code == 200:
+                    content.append(f"\nDependencies ({dep_file}):\n" + r.text[:1000])
+                    break
+        except:
+            pass
+        
+        if content:
+            return "\n".join(content)
+        else:
+            return f"Repository found: {owner}/{repo}"
+    except Exception as e:
+        return f"Repository: {repo_url}"
 
 # 5. The Main Core Route
 @app.post("/api/evaluate")
@@ -109,19 +113,37 @@ async def handle_evaluation(
 
     optimized_context = extracted_text[:8000]
 
-   
+    # Get appropriate prompt based on track and evaluation type
+    system_prompt = get_system_prompt(track=track, evaluation_type=evaluation_type)
+
+    # Adjust temperature and max_tokens based on evaluation type
+    if evaluation_type == "repo":
+        temperature = 0.2
+        max_tokens = 3500  # Repo eval needs more detail
+    elif evaluation_type == "prework":
+        temperature = 0.2
+        max_tokens = 2500  # Prework needs moderate detail
+    else:  # resume
+        temperature = 0.2
+        max_tokens = 2000  # Resume is shorter
+
     try:
         response = client.chat.completions.create(
-            model="meta/llama-3.1-70b-instruct",
+            model="deepseek-chat",
             messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": f"Track: {track}\nType: {evaluation_type}\n\nContent:\n{optimized_context}"}
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": optimized_context}
             ],
-            temperature=0.1,
-            max_tokens=1000 
+            temperature=temperature,
+            max_tokens=max_tokens 
         )
         
         raw_output = response.choices[0].message.content.strip()
         return json.loads(raw_output)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Llama Generation Engine Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Invalid JSON from DeepSeek: {str(e)}")
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)

@@ -1,0 +1,98 @@
+# Environment Variables
+.env
+.env.local
+.env.*.local
+
+# Backend - Python
+backend/venv/
+backend/env/
+backend/.venv/
+backend/__pycache__/
+backend/*.pyc
+backend/*.pyo
+backend/*.pyd
+backend/.Python
+backend/build/
+backend/develop-eggs/
+backend/dist/
+backend/*.egg-info/
+backend/.pytest_cache/
+backend/.coverage
+backend/htmlcov/
+backend/.tox/
+backend/.hypothesis/
+backend/*.log
+backend/.idea/
+backend/.vscode/
+backend/*.swp
+backend/*.swo
+backend/*~
+
+# Frontend - Node.js
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+frontend/.vite/
+frontend/npm-debug.log
+frontend/yarn-error.log
+frontend/.env.local
+frontend/.env.*.local
+frontend/.idea/
+frontend/.vscode/
+frontend/*.swp
+frontend/*.swo
+frontend/*~
+
+# IDE & Editor
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# OS Specific
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Desktop.ini
+
+# Testing
+.coverage
+.pytest_cache/
+htmlcov/
+.nyc_output/
+coverage/
+
+# Misc
+*.log
+*.logs
+.cache/
+tmp/
+temp/
+
+# Lock files (optional - uncomment if you want to exclude these)
+# package-lock.json
+# yarn.lock
+# poetry.lock
+
+# API Keys and Secrets (never commit these)
+.env
+.env.local
+secrets.json
+credentials.json
+
+# Build outputs
+*/build/
+*/dist/
+
+# Temporary files
+*.tmp
+*.bak
+*.backup
