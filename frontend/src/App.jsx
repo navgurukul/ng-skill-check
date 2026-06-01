@@ -43,6 +43,7 @@ function App() {
           {step === 5 && (
             <Dashboard 
               data={evaluationResult} 
+              type={type}
               onTryAgain={handleTryAgain} 
               onReset={handleGlobalReset} 
             />
