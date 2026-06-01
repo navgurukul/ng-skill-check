@@ -1,5 +1,40 @@
 import React, { useEffect, useState } from 'react';
 
+function inferUploadLabel(type, uploadData) {
+  if (type === 'repo') {
+    return 'repository';
+  }
+
+  const fileName = uploadData?.file?.name || '';
+  if (/offer|appointment|letter|certificate|invoice|nid|id|agreement|contract/i.test(fileName)) {
+    return 'non-resume document';
+  }
+
+  return type === 'prework' ? 'pre-work document' : 'resume';
+}
+
+function buildErrorMessage(type, uploadData, error) {
+  const uploadLabel = inferUploadLabel(type, uploadData);
+
+  if (type === 'repo') {
+    return 'We could not finish analyzing this repository. Please upload a valid GitHub repository link and try again.';
+  }
+
+  if (uploadLabel === 'non-resume document') {
+    return 'Please upload the relevant resume or project document. This upload looks like a different document type, so the evaluation cannot continue.';
+  }
+
+  if (type === 'resume') {
+    return 'We could not complete the resume analysis. A resume can still receive a low score if it is not aligned to the selected track; this screen only appears when the analysis could not be completed.';
+  }
+
+  if (type === 'prework') {
+    return 'We could not complete the pre-work analysis. Please upload the assigned pre-work or project document and try again.';
+  }
+
+  return error || 'Failed connecting to local execution thread.';
+}
+
 export default function ProcessingView({ track, type, uploadData, onComplete }) {
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState(null);
@@ -74,7 +109,7 @@ export default function ProcessingView({ track, type, uploadData, onComplete }) 
         console.error('[ERROR] Pipeline failed:', err);
         console.error('Error message:', err.message);
         console.error('Full error:', err);
-        setError(err.message || "Failed connecting to local execution thread.");
+        setError(buildErrorMessage(type, uploadData, err.message));
         clearInterval(interval);
       }
     };
@@ -86,7 +121,7 @@ export default function ProcessingView({ track, type, uploadData, onComplete }) 
   if (error) {
     return (
       <div className="text-center p-8 bg-red-500/5 border border-red-500/20 rounded-2xl max-w-md backdrop-blur-md">
-        <h3 className="text-lg font-bold text-red-400 mb-1">Evaluation Failed</h3>
+        <h3 className="text-lg font-bold text-red-400 mb-1">We could not finish this analysis</h3>
         <p className="text-xs text-slate-400 mb-4">{error}</p>
         <button onClick={() => window.location.reload()} className="px-4 py-2 bg-slate-900 border border-white/10 hover:bg-slate-800 text-white rounded-xl text-xs font-semibold cursor-pointer">Retry Session</button>
       </div>

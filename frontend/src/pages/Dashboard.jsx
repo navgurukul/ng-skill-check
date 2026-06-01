@@ -1,7 +1,61 @@
-import React from 'react';
 import { Download, RefreshCw, ArrowLeft, CheckCircle2, AlertTriangle, TrendingUp, Target } from 'lucide-react';
 
-export default function Dashboard({ data, onReset, onTryAgain, type }) {
+function toTitleCase(value) {
+  return value
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
+}
+
+function cleanDisplayName(value) {
+  return value
+    .replace(/\.[^.]+$/, '')
+    .replace(/[._-]+/g, ' ')
+    .replace(/\b(resume|cv|prework|pre work|project|report|final|candidate|document|portfolio)\b/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function inferSubjectName(type, uploadData) {
+  if (type === 'repo') {
+    const repoUrl = uploadData?.repoUrl || '';
+
+    try {
+      const parsedUrl = new URL(repoUrl);
+      const pathParts = parsedUrl.pathname.split('/').filter(Boolean);
+      const repoName = pathParts[pathParts.length - 1] || '';
+      const cleanedRepoName = cleanDisplayName(decodeURIComponent(repoName));
+
+      return cleanedRepoName ? toTitleCase(cleanedRepoName) : 'Repository';
+    } catch {
+      const fallbackParts = repoUrl.split('/').filter(Boolean);
+      const repoName = fallbackParts[fallbackParts.length - 1] || '';
+      const cleanedRepoName = cleanDisplayName(decodeURIComponent(repoName));
+      return cleanedRepoName ? toTitleCase(cleanedRepoName) : 'Repository';
+    }
+  }
+
+  const fileName = uploadData?.file?.name || '';
+  const cleanedFileName = cleanDisplayName(fileName);
+  return cleanedFileName ? toTitleCase(cleanedFileName) : 'Candidate';
+}
+
+function buildReportTitle(type, uploadData) {
+  const typeLabelMap = { resume: 'Resume', prework: 'Pre-Work', repo: 'Repository' };
+  const typeLabel = typeLabelMap[type] || 'Report';
+  const subjectName = inferSubjectName(type, uploadData);
+
+  if (type === 'repo') {
+    return `${subjectName} Repository Report`;
+  }
+
+  return subjectName === 'Candidate'
+    ? `Your ${typeLabel} Report`
+    : `${subjectName}'s ${typeLabel} Report`;
+}
+
+export default function Dashboard({ data, onReset, onTryAgain, type, uploadData }) {
   const evaluation = data || {
     overall_score: 0,
     score: 0,
@@ -22,11 +76,12 @@ export default function Dashboard({ data, onReset, onTryAgain, type }) {
 
   const score = evaluation.overall_score || evaluation.score || 0;
   const hasDetailedAssessment = !!evaluation.skill_assessment;
+  const reportTitle = buildReportTitle(type, uploadData);
 
   // FUNCTIONALITY 1: High-Fidelity Clean Document Printing System
   const handleDownloadReport = () => {
     const originalTitle = document.title;
-    document.title = `SkillCheck_Report_${score}_Score`;
+    document.title = `SkillCheck_${reportTitle.replace(/\s+/g, '_')}_${score}_Score`;
     window.print();
     document.title = originalTitle;
   };
@@ -38,13 +93,7 @@ export default function Dashboard({ data, onReset, onTryAgain, type }) {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/[0.06] print:border-black/10 pb-6 print:mb-6">
           <div>
           <span className="text-xs bg-indigo-500/10 border border-indigo-500/30 px-2.5 py-0.5 rounded-full text-indigo-400 font-semibold tracking-wide print:hidden">Evaluation complete</span>
-          {(() => {
-            const map = { resume: 'Resume', prework: 'Pre-Work', repo: 'Repository' };
-            const label = type ? (map[type] || type) + ' Report' : 'SkillCheck report';
-            return (
-              <h1 className="text-4xl font-black text-white print:text-black tracking-tight mt-2">Your <span className="text-indigo-400 print:text-indigo-600">{label}</span></h1>
-            );
-          })()}
+            <h1 className="text-4xl font-black text-white print:text-black tracking-tight mt-2">{reportTitle}</h1>
         </div>
         <div className="flex gap-3 print:hidden">
           {/* Linked explicit controller execution calls */}
