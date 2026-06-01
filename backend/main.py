@@ -65,65 +65,53 @@ async def handle_evaluation(
     file: UploadFile = File(None),
     repo_url: str = Form(None)
 ):
-    print(f"[BACKEND] Received evaluation request: track={track}, type={evaluation_type}")
-    print(f"[BACKEND] File present: {file is not None}, Repo URL present: {repo_url is not None}")
-    
     extracted_text = ""
 
+    if evaluation_type in ['resume', 'prework']:
+        if not file:
+            raise HTTPException(status_code=400, detail="PDF asset file data is missing.")
+        file_bytes = await file.read()
+        extracted_text = extract_text_from_pdf(file_bytes)
+    
+    elif evaluation_type == 'repo':
+        if not repo_url:
+            raise HTTPException(status_code=400, detail="Repository path variable is empty.")
+        extracted_text = extract_context_from_github(repo_url)
+
+    if not extracted_text.strip():
+        raise HTTPException(status_code=400, detail="Extracted document body content is completely empty.")
+
+    optimized_context = extracted_text[:8000]
+
+    # Get appropriate prompt based on track and evaluation type
+    system_prompt = get_system_prompt(track=track, evaluation_type=evaluation_type)
+
+    # Adjust temperature and max_tokens based on evaluation type
+    if evaluation_type == "repo":
+        temperature = 0.2
+        max_tokens = 3500  # Repo eval needs more detail
+    elif evaluation_type == "prework":
+        temperature = 0.2
+        max_tokens = 2500  # Prework needs moderate detail
+    else:  # resume
+        temperature = 0.2
+        max_tokens = 2000  # Resume is shorter
+
     try:
-        if evaluation_type in ['resume', 'prework']:
-            print(f"[BACKEND] Processing {evaluation_type} PDF")
-            if not file:
-                raise HTTPException(status_code=400, detail="PDF asset file data is missing.")
-            print(f"[BACKEND] Reading file: {file.filename}")
-            file_bytes = await file.read()
-            print(f"[BACKEND] File size: {len(file_bytes)} bytes")
-            extracted_text = extract_text_from_pdf(file_bytes)
-            print(f"[BACKEND] Extracted text length: {len(extracted_text)} characters")
-        
-        elif evaluation_type == 'repo':
-            print(f"[BACKEND] Processing GitHub repository: {repo_url}")
-            if not repo_url:
-                raise HTTPException(status_code=400, detail="Repository path variable is empty.")
-            extracted_text = extract_context_from_github(repo_url)
-            print(f"[BACKEND] Repository context: {extracted_text[:100]}...")
-
-        if not extracted_text.strip():
-            raise HTTPException(status_code=400, detail="Extracted document body content is completely empty.")
-
-        print(f"[BACKEND] Text extraction successful, length: {len(extracted_text)}")
-        optimized_context = extracted_text[:8000]
-        print(f"[BACKEND] Optimized context length: {len(optimized_context)}")
-
-        print(f"[BACKEND] Calling DeepSeek API with {track} role evaluation...")
-        system_prompt = get_system_prompt(track, evaluation_type)
-        eval_type_label = "Resume" if evaluation_type == "resume" else "Prework/Project" if evaluation_type == "prework" else "GitHub Repository"
-        print(f"[BACKEND] Using {track.upper()} Engineer + {eval_type_label} evaluation criteria")
-        
         response = client.chat.completions.create(
             model="deepseek-chat",
             messages=[
                 {"role": "system", "content": system_prompt},
-                {"role": "user", "content": f"Track: {track}\nEvaluation Type: {evaluation_type}\n\nContent to Evaluate:\n{optimized_context}"}
+                {"role": "user", "content": optimized_context}
             ],
-            temperature=0.2,
-            max_tokens=2500,
-            top_p=0.9
+            temperature=temperature,
+            max_tokens=max_tokens 
         )
         
-        print(f"[BACKEND] DeepSeek response received")
         raw_output = response.choices[0].message.content.strip()
-        print(f"[BACKEND] Raw output length: {len(raw_output)}")
-        print(f"[BACKEND] Parsing JSON...")
-        result = json.loads(raw_output)
-        print(f"[BACKEND] Evaluation successful: {result.get('score', 'N/A')} points")
-        return result
-    except json.JSONDecodeError as je:
-        print(f"[BACKEND] JSON parsing error: {str(je)}")
-        raise HTTPException(status_code=500, detail=f"Invalid JSON from DeepSeek: {str(je)}")
+        return json.loads(raw_output)
     except Exception as e:
-        print(f"[BACKEND] Unexpected error: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Evaluation Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Invalid JSON from DeepSeek: {str(e)}")
 
 
 if __name__ == "__main__":
