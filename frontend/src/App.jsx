@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import Navbar from './components/Navbar';
 import TrackSelection from './pages/TrackSelection';
 import TypeSelection from './pages/TypeSelection';
@@ -44,6 +44,7 @@ function App() {
             <Dashboard 
               data={evaluationResult} 
               type={type}
+              uploadData={uploadData}
               onTryAgain={handleTryAgain} 
               onReset={handleGlobalReset} 
             />
