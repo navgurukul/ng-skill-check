@@ -1,7 +1,7 @@
 import React from 'react';
 import { Download, RefreshCw, ArrowLeft, CheckCircle2, AlertTriangle, TrendingUp, Target } from 'lucide-react';
 
-export default function Dashboard({ data, onReset, onTryAgain }) {
+export default function Dashboard({ data, onReset, onTryAgain, type }) {
   const evaluation = data || {
     overall_score: 0,
     score: 0,
@@ -36,9 +36,15 @@ export default function Dashboard({ data, onReset, onTryAgain }) {
       
       {/* Top action layout blocks - hidden completely during document export generation */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/[0.06] print:border-black/10 pb-6 print:mb-6">
-        <div>
+          <div>
           <span className="text-xs bg-indigo-500/10 border border-indigo-500/30 px-2.5 py-0.5 rounded-full text-indigo-400 font-semibold tracking-wide print:hidden">Evaluation complete</span>
-          <h1 className="text-4xl font-black text-white print:text-black tracking-tight mt-2">Your <span className="text-indigo-400 print:text-indigo-600">SkillCheck</span> report</h1>
+          {(() => {
+            const map = { resume: 'Resume', prework: 'Pre-Work', repo: 'Repository' };
+            const label = type ? (map[type] || type) + ' Report' : 'SkillCheck report';
+            return (
+              <h1 className="text-4xl font-black text-white print:text-black tracking-tight mt-2">Your <span className="text-indigo-400 print:text-indigo-600">{label}</span></h1>
+            );
+          })()}
         </div>
         <div className="flex gap-3 print:hidden">
           {/* Linked explicit controller execution calls */}
