@@ -29,7 +29,7 @@ IMPORTANT: Return ONLY valid JSON in this exact format:
     "jd_alignment": {{"score": 75, "evidence": "Skill match"}}
   }},
   "strengths": ["Strength 1", "Strength 2", "Strength 3"],
-  "gaps": ["Gap 1", "Gap 2"],
+  "critical_gaps": ["Gap 1", "Gap 2"],
   "tech_stack": ["Tech1", "Tech2", "Tech3"],
   "hiring_recommendation": "Strong",
   "feedback": "Brief assessment"
