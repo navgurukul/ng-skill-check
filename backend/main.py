@@ -27,7 +27,10 @@ app = FastAPI(title="NG SkillCheck Clean AI Engine - Optimized")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],  
+    allow_origins=[
+        "http://localhost:5173",
+        "https://main.dtaell0zoz93v.amplifyapp.com"  
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
