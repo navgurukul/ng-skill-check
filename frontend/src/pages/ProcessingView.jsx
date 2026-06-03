@@ -39,13 +39,21 @@ export default function ProcessingView({ track, type, uploadData, onComplete }) 
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState(null);
 
-  const steps = [
-    { label: "Extracting PDF content", minProgress: 0 },
-    { label: "Understanding context", minProgress: 25 },
-    { label: "Checking skills & concepts", minProgress: 50 },
-    { label: "Matching career track", minProgress: 75 },
-    { label: "Generating feedback", minProgress: 90 }
-  ];
+  const steps = type === 'repo'
+    ? [
+        { label: 'Inspecting repository structure', minProgress: 0 },
+        { label: 'Reading files & dependencies', minProgress: 25 },
+        { label: 'Evaluating code quality', minProgress: 50 },
+        { label: 'Matching role track', minProgress: 75 },
+        { label: 'Generating feedback', minProgress: 90 }
+      ]
+    : [
+        { label: 'Extracting PDF content', minProgress: 0 },
+        { label: 'Understanding context', minProgress: 25 },
+        { label: 'Checking skills & concepts', minProgress: 50 },
+        { label: 'Matching career track', minProgress: 75 },
+        { label: 'Generating feedback', minProgress: 90 }
+      ];
 
   useEffect(() => {
     // Smooth loader ticker logic running safely up to 92%
@@ -145,8 +153,12 @@ export default function ProcessingView({ track, type, uploadData, onComplete }) 
       </div>
 
       <div className="flex-1 w-full max-w-xl space-y-4 text-left">
-        <h2 className="text-4xl font-black tracking-tight mb-1">Running <span className="text-indigo-400">AI evaluation</span></h2>
-        <p className="text-sm text-slate-400 mb-8">Our model is reading your document, scoring against the track rubric and composing personalized feedback.</p>
+        <h2 className="text-4xl font-black tracking-tight mb-1">Running <span className="text-indigo-400">{type === 'repo' ? 'repo evaluation' : 'AI evaluation'}</span></h2>
+        <p className="text-sm text-slate-400 mb-8">
+          {type === 'repo'
+            ? 'Our model is reading your repository, inspecting code and dependencies, and composing personalized feedback.'
+            : 'Our model is reading your document, scoring against the track rubric and composing personalized feedback.'}
+        </p>
         
         <div className="space-y-3">
           {steps.map((st, i) => {

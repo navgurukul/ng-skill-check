@@ -55,7 +55,15 @@ function buildReportTitle(type, uploadData) {
     : `${subjectName}'s ${typeLabel} Report`;
 }
 
-export default function Dashboard({ data, onReset, onTryAgain, type, uploadData }) {
+function formatTrackLabel(track) {
+  if (!track) {
+    return 'Unknown Track';
+  }
+
+  return `${toTitleCase(track)} Engineer`;
+}
+
+export default function Dashboard({ data, onReset, onTryAgain, type, uploadData, track }) {
   const evaluation = data || {
     overall_score: 0,
     score: 0,
@@ -71,17 +79,22 @@ export default function Dashboard({ data, onReset, onTryAgain, type, uploadData 
     next_steps_to_hire: [],
     skill_assessment: {},
     navguruful_fit: {},
+    tech_stack: [],
+    hiring_recommendation: '',
     feedback: ""
   };
 
   const score = evaluation.overall_score || evaluation.score || 0;
   const hasDetailedAssessment = !!evaluation.skill_assessment;
   const reportTitle = buildReportTitle(type, uploadData);
+  const trackLabel = formatTrackLabel(track);
+  const techStack = Array.isArray(evaluation.tech_stack) ? evaluation.tech_stack : [];
+  const hiringRecommendation = evaluation.hiring_recommendation;
 
   // FUNCTIONALITY 1: High-Fidelity Clean Document Printing System
   const handleDownloadReport = () => {
     const originalTitle = document.title;
-    document.title = `SkillCheck_${reportTitle.replace(/\s+/g, '_')}_${score}_Score`;
+    document.title = `SkillCheck_${trackLabel.replace(/\s+/g, '_')}_${reportTitle.replace(/\s+/g, '_')}_${score}_Score`;
     window.print();
     document.title = originalTitle;
   };
@@ -94,6 +107,10 @@ export default function Dashboard({ data, onReset, onTryAgain, type, uploadData 
           <div>
           <span className="text-xs bg-indigo-500/10 border border-indigo-500/30 px-2.5 py-0.5 rounded-full text-indigo-400 font-semibold tracking-wide print:hidden">Evaluation complete</span>
             <h1 className="text-4xl font-black text-white print:text-black tracking-tight mt-2">{reportTitle}</h1>
+            <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold tracking-wider text-slate-300 print:border-black/10 print:bg-slate-100 print:text-slate-700">
+              <span className="text-slate-500 uppercase">Track</span>
+              <span className="text-white print:text-black">{trackLabel}</span>
+            </div>
         </div>
         <div className="flex gap-3 print:hidden">
           {/* Linked explicit controller execution calls */}
@@ -174,6 +191,30 @@ export default function Dashboard({ data, onReset, onTryAgain, type, uploadData 
           </ul>
         </div>
       </div>
+
+      {(techStack.length > 0 || hiringRecommendation) && (
+        <div className="grid md:grid-cols-2 gap-6 print:grid-cols-2">
+          {techStack.length > 0 && (
+            <div className="p-6 rounded-2xl bg-violet-500/[0.02] border border-violet-500/10 print:border-violet-600/20 space-y-4 print:bg-violet-50/30 page-break-inside-avoid">
+              <h3 className="text-sm font-bold text-violet-400 print:text-violet-700 uppercase tracking-widest flex items-center gap-2"><Target className="w-4 h-4" /> Tech Stack</h3>
+              <div className="flex flex-wrap gap-2">
+                {techStack.map((tech, index) => (
+                  <span key={index} className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-semibold text-slate-200 print:bg-white print:border-black/10 print:text-slate-800">
+                    {tech}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {hiringRecommendation && (
+            <div className="p-6 rounded-2xl bg-amber-500/[0.02] border border-amber-500/10 print:border-amber-600/20 space-y-4 print:bg-amber-50/30 page-break-inside-avoid">
+              <h3 className="text-sm font-bold text-amber-400 print:text-amber-700 uppercase tracking-widest flex items-center gap-2"><TrendingUp className="w-4 h-4" /> Hiring Recommendation</h3>
+              <p className="text-sm text-slate-300 print:text-slate-800 leading-relaxed">{hiringRecommendation}</p>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Hiring Strategy Execution Steps */}
       {evaluation.next_steps_to_hire && evaluation.next_steps_to_hire.length > 0 && (

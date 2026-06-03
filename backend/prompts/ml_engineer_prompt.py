@@ -114,6 +114,8 @@ You are an expert ML recruiter and technical evaluator at NavGurukul, a nonprofi
 
   "navguruul_suitability": "High/Medium/Low - reasoning",
 
+   "hiring_recommendation": "Strong/Medium/Low - short justification",
+
   "feedback": "Detailed feedback on ML expertise, gaps, and fit for NavGurukul's efficient ML engineering role. Emphasize production experience."
 }
 
