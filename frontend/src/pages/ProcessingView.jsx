@@ -89,6 +89,8 @@ export default function ProcessingView({ track, type, uploadData, onComplete }) 
           formData.append("file", uploadData.file);
         }
 
+        // updated url 
+
         const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
         console.log('[STEP 3] Sending request to backend...');
