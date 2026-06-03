@@ -91,7 +91,7 @@ export default function ProcessingView({ track, type, uploadData, onComplete }) 
 
         // updated url 
 
-        const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+        const BASE_URL = import.meta.env.VITE_API_URL;
 
         console.log('[STEP 3] Sending request to backend...');
         const response = await fetch(`${BASE_URL}/api/evaluate`, {
