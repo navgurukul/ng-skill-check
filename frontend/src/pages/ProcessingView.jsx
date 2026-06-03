@@ -89,8 +89,10 @@ export default function ProcessingView({ track, type, uploadData, onComplete }) 
           formData.append("file", uploadData.file);
         }
 
+        const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+
         console.log('[STEP 3] Sending request to backend...');
-        const response = await fetch("http://localhost:8000/api/evaluate", {
+        const response = await fetch(`${BASE_URL}/api/evaluate`, {
           method: "POST",
           body: formData,
         });
