@@ -85,6 +85,7 @@ You are an expert AI/ML recruiter and technical evaluator at NavGurukul, a nonpr
   ],
 
   "navguruul_suitability": "High/Medium/Low - reasoning",
+  "hiring_recommendation": "Strong/Medium/Low - short justification",
 
   "feedback": "Comprehensive feedback addressing strengths, gaps, and fit for NavGurukul AI Engineer role. Be specific with examples."
 }

@@ -45,6 +45,7 @@ function App() {
               data={evaluationResult} 
               type={type}
               uploadData={uploadData}
+              track={track}
               onTryAgain={handleTryAgain} 
               onReset={handleGlobalReset} 
             />

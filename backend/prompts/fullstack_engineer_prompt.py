@@ -156,6 +156,8 @@ You are an expert full-stack recruiter and technical evaluator at NavGurukul, bu
 
   "navguruul_suitability": "High/Medium/Low - reasoning",
 
+   "hiring_recommendation": "Strong/Medium/Low - short justification",
+
   "feedback": "Comprehensive assessment of full-stack capabilities, production experience, system design thinking, and fit for NavGurukul's learning platform development."
 }
 
