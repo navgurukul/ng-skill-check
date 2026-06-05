@@ -29,7 +29,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:5173",
-        "https://main.dtaell0zoz93v.amplifyapp.com"  
+        # "https://main.dtaell0zoz93v.amplifyapp.com"  
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -90,6 +90,98 @@ def extract_context_from_github(repo_url: str):
     except Exception as e:
         return f"Repository: {repo_url}"
 
+
+def normalize_json_text(raw_text: str) -> str:
+    text = (raw_text or "").strip()
+
+    if text.startswith("```"):
+        text = text.split("\n", 1)[1] if "\n" in text else ""
+        text = text.rsplit("```", 1)[0].strip() if "```" in text else text.strip()
+
+    if text.endswith("```"):
+        text = text[:-3].strip()
+
+    return text
+
+
+def extract_json_substring(raw_text: str):
+    text = raw_text or ""
+    start_candidates = [index for index in (text.find("{"), text.find("[")) if index != -1]
+    if not start_candidates:
+        return None
+
+    start_index = min(start_candidates)
+    opening_char = text[start_index]
+    closing_char = "}" if opening_char == "{" else "]"
+    depth = 0
+    in_string = False
+    escape_next = False
+
+    for index in range(start_index, len(text)):
+        char = text[index]
+
+        if in_string:
+            if escape_next:
+                escape_next = False
+            elif char == "\\":
+                escape_next = True
+            elif char == '"':
+                in_string = False
+            continue
+
+        if char == '"':
+            in_string = True
+        elif char == opening_char:
+            depth += 1
+        elif char == closing_char:
+            depth -= 1
+            if depth == 0:
+                return text[start_index:index + 1]
+
+    return None
+
+
+def parse_llm_json(raw_output: str):
+    candidates = [
+        raw_output,
+        normalize_json_text(raw_output),
+        extract_json_substring(raw_output),
+    ]
+
+    for candidate in candidates:
+        if not candidate:
+            continue
+
+        try:
+            return json.loads(candidate)
+        except json.JSONDecodeError:
+            continue
+
+    raise ValueError("Could not parse a valid JSON payload from the model response.")
+
+
+def repair_json_output(raw_output: str, max_tokens: int):
+    repair_prompt = (
+        "Convert the following text into valid JSON only. "
+        "Do not add markdown, commentary, or extra keys. "
+        "Preserve the intended schema and all recoverable fields. "
+        "If the text is already valid JSON, return it unchanged.\n\n"
+        f"TEXT:\n{raw_output}"
+    )
+
+    repair_response = client.chat.completions.create(
+        model="deepseek-chat",
+        messages=[
+            {"role": "system", "content": "You are a strict JSON repair engine."},
+            {"role": "user", "content": repair_prompt},
+        ],
+        temperature=0,
+        max_tokens=max_tokens,
+    )
+
+    repaired_output = repair_response.choices[0].message.content or ""
+    return parse_llm_json(repaired_output.strip())
+
 # 5. The Main Core Route
 @app.post("/api/evaluate")
 async def handle_evaluation(
@@ -141,8 +233,12 @@ async def handle_evaluation(
             max_tokens=max_tokens 
         )
         
-        raw_output = response.choices[0].message.content.strip()
-        return json.loads(raw_output)
+        raw_output = (response.choices[0].message.content or "").strip()
+
+        try:
+            return parse_llm_json(raw_output)
+        except Exception:
+            return repair_json_output(raw_output, max_tokens)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Invalid JSON from DeepSeek: {str(e)}")
 
