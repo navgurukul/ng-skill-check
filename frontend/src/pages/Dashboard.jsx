@@ -89,7 +89,15 @@ export default function Dashboard({ data, onReset, onTryAgain, type, uploadData,
   const reportTitle = buildReportTitle(type, uploadData);
   const trackLabel = formatTrackLabel(track);
   const techStack = Array.isArray(evaluation.tech_stack) ? evaluation.tech_stack : [];
-  const hiringRecommendation = evaluation.hiring_recommendation;
+  // const hiringRecommendation = evaluation.hiring_recommendation;
+  const getCustomRecommendation = (score) => {
+  const numericScore = Number(score);
+  if (numericScore < 60) return "Low";
+  if (numericScore >= 60 && numericScore <= 80) return "Medium";
+  return "High";
+};
+
+const hiringRecommendation = getCustomRecommendation(score);
 
   // FUNCTIONALITY 1: High-Fidelity Clean Document Printing System
   const handleDownloadReport = () => {
