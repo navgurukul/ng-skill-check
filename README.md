@@ -164,7 +164,14 @@ Ng-SkillCheck/
 │   └── package.json
 │
 ├── backend/                           # FastAPI Python Server
-│   ├── main.py                       # Core API endpoints
+│   ├── main.py                       # FastAPI app + /api/evaluate route
+│   ├── evaluation.py                 # Shared evaluation core (PDF/GitHub + DeepSeek)
+│   ├── email_watcher/                # Automated Gmail intake worker
+│   │   ├── runner.py                 # Polling loop entry point
+│   │   ├── config.py                 # Env-driven settings
+│   │   ├── processor.py              # Detect/validate/name/evaluate pipeline
+│   │   ├── store.py                  # Persist submissions to disk
+│   │   └── providers/                # imap + gmail_api access methods
 │   ├── prompts/
 │   │   ├── __init__.py              # Prompt loader
 │   │   ├── ai_engineer_prompt.py    # AI Engineer evaluation
@@ -341,6 +348,55 @@ Parameters:
   "feedback": "..."
 }
 ```
+
+---
+
+## 📬 Email Intake Worker (Automated Submissions)
+
+Instead of using the web uploader, candidates can email their pre-work and have it
+evaluated automatically. The worker (`backend/email_watcher/`) continuously watches a
+designated Gmail inbox and, for each new email, **detects** it, **validates** the
+attachment, **checks the naming convention**, **extracts the candidate name**, and
+**auto-runs the evaluation** through the same `/api/evaluate` pipeline — then stores
+the result.
+
+### Expected submission
+
+```
+Subject: Pre-Work Submission
+Attachment: ng_aniket.pdf      →  candidate name "Aniket"
+```
+
+Naming convention: `ng_<name>.pdf` (e.g. `ng_aniket.pdf`, `ng_first_last.pdf`).
+Emails with the wrong subject, no PDF, or a non-matching filename are **logged and
+skipped** (no reply is sent). The track is **not** parsed from the email — it uses
+`DEFAULT_EMAIL_TRACK` (default `ai`) with `evaluation_type=prework`.
+
+### Configure
+
+Copy the email keys from `.env.example` into `backend/.env` and pick a provider:
+
+- **IMAP (simplest):** set `EMAIL_PROVIDER=imap`, then enable 2FA on the Gmail account
+  and create an App Password at https://myaccount.google.com/apppasswords. Set
+  `GMAIL_ADDRESS` and `GMAIL_APP_PASSWORD`. No extra libraries needed.
+- **Gmail API (OAuth2):** set `EMAIL_PROVIDER=gmail_api`, create an OAuth *Desktop app*
+  client in Google Cloud Console, download `credentials.json` into `backend/`. On first
+  run a browser opens for consent and a `token.json` is saved for reuse.
+
+### Run
+
+```bash
+cd backend
+source venv/bin/activate
+python -m email_watcher.runner            # continuous polling loop
+python -m email_watcher.runner --once     # single cycle (testing)
+python -m email_watcher.runner --dry-run  # validate + log, no DeepSeek call
+```
+
+Processed submissions are written to `backend/submissions/<name>_<timestamp>/`
+(`<file>.pdf`, `evaluation.json`, `metadata.json`) and appended to
+`backend/submissions/index.jsonl`. Run the worker as a **single process** (separate
+from the web server) so polling is not duplicated across gunicorn workers.
 
 ---
 

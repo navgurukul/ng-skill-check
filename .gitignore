@@ -87,6 +87,11 @@ temp/
 .env.local
 secrets.json
 credentials.json
+token.json
+backend/token.json
+
+# Email intake worker: persisted candidate submissions
+backend/submissions/
 
 # Build outputs
 */build/

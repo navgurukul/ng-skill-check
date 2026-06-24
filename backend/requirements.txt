@@ -7,5 +7,10 @@ pypdf==4.2.0
 requests
 openai==1.58.1
 
+# Email intake worker (Gmail API provider only; IMAP uses the stdlib)
+google-api-python-client==2.149.0
+google-auth==2.35.0
+google-auth-oauthlib==1.2.1
+
 
 

@@ -1,6 +1,7 @@
 import React from 'react';
+import { Settings } from 'lucide-react';
 
-export default function Navbar({ currentStep, onLogoClick }) { // 🎯 Added onLogoClick prop
+export default function Navbar({ currentStep, onLogoClick, showTimeline = true }) { // 🎯 Added onLogoClick prop
   const timelineSteps = [
     { id: 1, label: 'Track' },
     { id: 2, label: 'Type' },
@@ -31,20 +32,33 @@ export default function Navbar({ currentStep, onLogoClick }) { // 🎯 Added onL
           </div>
         </div>
 
-        <div className="flex items-center gap-3 bg-slate-900/80 border border-white/[0.06] px-5 py-2 rounded-xl text-xs md:text-sm backdrop-blur-md shadow-inner shadow-black/40">
-          {timelineSteps.map((s, idx) => (
-            <React.Fragment key={s.id}>
-              <div className={`flex items-center gap-2 px-3 py-1 rounded-lg transition-all ${currentStep === s.id ? 'bg-indigo-600/30 text-indigo-400 border border-indigo-500/30 font-extrabold scale-105' : 'text-slate-500 font-medium'}`}>
-                <span className={`w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-black ${currentStep >= s.id ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20' : 'bg-slate-800 text-slate-400'}`}>
-                  {s.id}
-                </span>
-                <span className="tracking-wide">{s.label}</span>
-              </div>
-              {idx < timelineSteps.length - 1 && (
-                <span className="text-slate-800 font-semibold text-sm mx-1">/</span>
-              )}
-            </React.Fragment>
-          ))}
+        <div className="flex items-center gap-3">
+          {showTimeline && (
+            <div className="flex items-center gap-3 bg-slate-900/80 border border-white/[0.06] px-5 py-2 rounded-xl text-xs md:text-sm backdrop-blur-md shadow-inner shadow-black/40">
+              {timelineSteps.map((s, idx) => (
+                <React.Fragment key={s.id}>
+                  <div className={`flex items-center gap-2 px-3 py-1 rounded-lg transition-all ${currentStep === s.id ? 'bg-indigo-600/30 text-indigo-400 border border-indigo-500/30 font-extrabold scale-105' : 'text-slate-500 font-medium'}`}>
+                    <span className={`w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-black ${currentStep >= s.id ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20' : 'bg-slate-800 text-slate-400'}`}>
+                      {s.id}
+                    </span>
+                    <span className="tracking-wide">{s.label}</span>
+                  </div>
+                  {idx < timelineSteps.length - 1 && (
+                    <span className="text-slate-800 font-semibold text-sm mx-1">/</span>
+                  )}
+                </React.Fragment>
+              ))}
+            </div>
+          )}
+
+          <a
+            href="/config"
+            title="Email Intake Configuration"
+            className={`flex items-center gap-2 px-3 py-2 rounded-xl border transition-all cursor-pointer ${!showTimeline ? 'bg-indigo-600/30 text-indigo-400 border-indigo-500/30' : 'bg-slate-900/80 text-slate-400 hover:text-white border-white/[0.06] hover:border-white/20'}`}
+          >
+            <Settings className="w-4 h-4" />
+            <span className="text-xs font-bold tracking-wide hidden sm:inline">Config</span>
+          </a>
         </div>
 
       </div>
