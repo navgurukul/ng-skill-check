@@ -24,6 +24,7 @@ backend/.hypothesis/
 backend/*.log
 backend/.idea/
 backend/.vscode/
+backend/credentials.json
 backend/*.swp
 backend/*.swo
 backend/*~
@@ -96,3 +97,4 @@ credentials.json
 *.tmp
 *.bak
 *.backup
+backend/token.pickle
