@@ -1436,6 +1436,38 @@ function buildReportTitle(type, uploadData, emailAddress) {
     : `${subjectName}'s ${typeLabel} Report`;
 }
 
+function parseRawResponseTrack(rawResponse) {
+  if (!rawResponse) return null;
+  if (typeof rawResponse === 'string') {
+    try {
+      rawResponse = JSON.parse(rawResponse);
+    } catch {
+      return null;
+    }
+  }
+  if (typeof rawResponse !== 'object' || rawResponse === null) return null;
+  if (rawResponse.track) return rawResponse.track;
+  if (rawResponse.raw_response) return parseRawResponseTrack(rawResponse.raw_response);
+  return null;
+}
+
+function getSubmissionTrack(submission) {
+  return (
+    submission.track ||
+    parseRawResponseTrack(submission.raw_response) ||
+    'ai'
+  ).toString().toLowerCase();
+}
+
+function getPayloadTrack(payload, submission) {
+  return (
+    parseRawResponseTrack(payload) ||
+    submission?.track ||
+    parseRawResponseTrack(submission?.raw_response) ||
+    'ai'
+  ).toString().toLowerCase();
+}
+
 function formatTrackLabel(track) {
   if (!track) return 'Full Stack Developer';
   if (track.toLowerCase() === 'ai') return 'AI Engineer';
@@ -1503,7 +1535,7 @@ export default function Dashboard({ data, onReset, onTryAgain, type, uploadData,
       setSelectedEvaluation(activePayload);
       setActiveReportMeta({
         type: 'prework', 
-        track: activePayload?.track || submission?.track || 'ai', 
+        track: getPayloadTrack(activePayload, submission),
         uploadData: { fileName: submission.file_name || 'Pre-Work' },
         candidateEmail: submission.candidate_email // Pass user email address down
       });
@@ -1607,7 +1639,7 @@ export default function Dashboard({ data, onReset, onTryAgain, type, uploadData,
                       {/* New Column: Dynamic Track Badge Field */}
                       <td className="p-4 text-sm font-medium text-slate-200">
                         <span className="px-2 py-1 rounded bg-indigo-500/10 text-indigo-300 border border-indigo-500/20">
-                          {formatTrackLabel(sub.track || 'ai')}
+                          {formatTrackLabel(getSubmissionTrack(sub))}
                         </span>
                       </td>
                       <td className="p-4 font-mono text-indigo-300">{sub.file_name}</td>
@@ -1670,7 +1702,7 @@ export default function Dashboard({ data, onReset, onTryAgain, type, uploadData,
                 <>
                   <button onClick={onTryAgain} className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 border border-white/10 hover:bg-slate-800 rounded-xl text-sm font-medium transition-colors cursor-pointer text-white"><RefreshCw className="w-4 h-4" /> Try Again</button>
                   <button onClick={onReset} className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-sm font-bold transition-colors cursor-pointer text-white"><ArrowLeft className="w-4 h-4" /> Back</button>
-                </                >
+                </>
               ) : (
                 <button 
                   onClick={() => setViewMode('list')} 

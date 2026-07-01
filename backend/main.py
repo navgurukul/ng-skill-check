@@ -762,12 +762,23 @@ def get_email_submissions():
         for row in rows:
             row_dict = dict(row)
             if 'raw_response' in row_dict and row_dict['raw_response']:
-                # If stored as string block in DB, parse it into an active dict object right here
                 if isinstance(row_dict['raw_response'], str):
                     try:
                         row_dict['raw_response'] = json.loads(row_dict['raw_response'])
                     except Exception:
                         pass
+
+                if isinstance(row_dict['raw_response'], dict):
+                    # Expose track metadata at top level for easier dashboard rendering.
+                    row_dict['track'] = row_dict['raw_response'].get('track') or row_dict.get('track')
+                    if isinstance(row_dict['raw_response'].get('raw_response'), str):
+                        try:
+                            nested = json.loads(row_dict['raw_response'].get('raw_response'))
+                            if isinstance(nested, dict):
+                                row_dict['track'] = row_dict['track'] or nested.get('track')
+                        except Exception:
+                            pass
+
             normalized_rows.append(row_dict)
             
         cur.close()
