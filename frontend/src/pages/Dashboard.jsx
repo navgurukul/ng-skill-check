@@ -1480,6 +1480,9 @@ export default function Dashboard({ data, onReset, onTryAgain, type, uploadData,
   // --- STATES ---
   const [emailSubmissions, setEmailSubmissions] = useState([]);
   const [dbLoading, setDbLoading] = useState(true);
+  const [isProcessingEmails, setIsProcessingEmails] = useState(false);
+  const [processingMessage, setProcessingMessage] = useState('');
+  const [toast, setToast] = useState(null);
   
   const [selectedEvaluation, setSelectedEvaluation] = useState(data || null);
   const [activeReportMeta, setActiveReportMeta] = useState({ 
@@ -1491,22 +1494,57 @@ export default function Dashboard({ data, onReset, onTryAgain, type, uploadData,
   
   const [viewMode, setViewMode] = useState(data ? 'report' : 'list');
 
-  // Fetch submissions logs
+  const fetchEmailSubmissions = async () => {
+    try {
+      setDbLoading(true);
+      const res = await fetch('http://localhost:8000/api/email-submissions');
+      if (!res.ok) throw new Error('Database network failure');
+      const logs = await res.json();
+      setEmailSubmissions(logs);
+    } catch (err) {
+      console.error('Failed to fetch logs:', err);
+    } finally {
+      setDbLoading(false);
+    }
+  };
+
   useEffect(() => {
-    fetch('http://localhost:8000/api/email-submissions')
-      .then((res) => {
-        if (!res.ok) throw new Error("Database network failure");
-        return res.json();
-      })
-      .then((logs) => {
-        setEmailSubmissions(logs);
-        setDbLoading(false);
-      })
-      .catch((err) => {
-        console.error("Failed to fetch logs:", err);
-        setDbLoading(false);
-      });
+    fetchEmailSubmissions();
   }, []);
+
+  useEffect(() => {
+    if (!toast) return;
+
+    const timeoutId = window.setTimeout(() => setToast(null), 4000);
+    return () => window.clearTimeout(timeoutId);
+  }, [toast]);
+
+  const handleProcessEmails = async () => {
+    setIsProcessingEmails(true);
+    setProcessingMessage('Scanning Gmail for new pre-work submissions...');
+    setToast(null);
+
+    try {
+      const res = await fetch('http://localhost:8000/api/process-emails', { method: 'POST' });
+      const payload = await res.json();
+      if (!res.ok) throw new Error(payload.detail || 'Email processing failed');
+      setProcessingMessage(payload.message || 'Processing complete.');
+      setToast({
+        type: 'success',
+        message: payload.message || 'New pre-work emails were processed successfully.'
+      });
+      await fetchEmailSubmissions();
+    } catch (err) {
+      console.error('Failed to process emails:', err);
+      setProcessingMessage(err.message || 'Unable to process emails right now.');
+      setToast({
+        type: 'error',
+        message: err.message || 'Unable to process emails right now.'
+      });
+    } finally {
+      setIsProcessingEmails(false);
+    }
+  };
 
   // MASTER DATA PARSING CONTROLLER
   const handleSelectEmailReport = (submission) => {
@@ -1596,13 +1634,46 @@ export default function Dashboard({ data, onReset, onTryAgain, type, uploadData,
 
   return (
     <div className="w-full text-left space-y-10 animate-fade-in print:p-8 print:bg-white print:text-black">
+      {toast && (
+        <div className={`fixed right-4 top-4 z-50 flex max-w-sm items-start gap-3 rounded-xl border px-4 py-3 shadow-2xl backdrop-blur ${toast.type === 'success' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200' : 'border-red-500/30 bg-red-500/10 text-red-200'}`}>
+          {toast.type === 'success' ? (
+            <CheckCircle className="mt-0.5 h-5 w-5 shrink-0" />
+          ) : (
+            <XCircle className="mt-0.5 h-5 w-5 shrink-0" />
+          )}
+          <div className="flex-1">
+            <p className="text-sm font-semibold">{toast.type === 'success' ? 'Processing finished' : 'Processing failed'}</p>
+            <p className="mt-1 text-sm text-slate-200/90">{toast.message}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setToast(null)}
+            className="rounded-full p-1 text-slate-300 transition hover:bg-white/10 hover:text-white"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
       
       {/* VIEW MODE 1: MASTER LIST VIEW */}
       {viewMode === 'list' && (
         <div className="space-y-4 w-full">
-          <div className="flex items-center gap-2 border-b border-white/[0.06] pb-3">
-            <Mail className="w-5 h-5 text-indigo-400" />
-            <h2 className="text-xl font-bold text-white">Automated Candidate Submissions Inbox</h2>
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between border-b border-white/[0.06] pb-3">
+            <div className="flex items-center gap-2">
+              <Mail className="w-5 h-5 text-indigo-400" />
+              <h2 className="text-xl font-bold text-white">Automated Candidate Submissions Inbox</h2>
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                onClick={handleProcessEmails}
+                disabled={isProcessingEmails}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 disabled:cursor-not-allowed text-white text-sm font-semibold transition-colors"
+              >
+                {isProcessingEmails ? <Loader className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                {isProcessingEmails ? 'Processing...' : 'Process New Pre-Work Emails'}
+              </button>
+              <span className="text-xs text-slate-400">{processingMessage || 'Checks Gmail for new pre-work submissions and updates the inbox.'}</span>
+            </div>
           </div>
           
           {dbLoading ? (

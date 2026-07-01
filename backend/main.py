@@ -536,6 +536,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from openai import OpenAI
 from dotenv import load_dotenv
 from prompts import get_system_prompt
+from email_monitor import check_and_process_emails as process_emails_from_gmail
 
 # --- DATABASE INTEGRATION IMPORTS ---
 from database import get_db_connection
@@ -741,6 +742,15 @@ async def handle_evaluation(
             return repair_json_output(raw_output, max_tokens)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Invalid JSON from DeepSeek: {str(e)}")
+
+@app.post("/api/process-emails")
+def process_emails():
+    try:
+        result = process_emails_from_gmail()
+        return {"success": True, **result}
+    except Exception as e:
+        print(f"[API CORE ERROR] Failed to process emails: {e}")
+        raise HTTPException(status_code=500, detail="Email processing failed.")
 
 # --- NEW FULLY NORMALIZED BACKEND ENDPOINT ---
 @app.get("/api/email-submissions")

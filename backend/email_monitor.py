@@ -729,7 +729,16 @@ def check_and_process_emails():
     
     if not messages:
         print("[MONITOR] No new pre-work submissions found.")
-        return
+        return {
+            "processed": 0,
+            "failed": 0,
+            "skipped": 0,
+            "message": "No new pre-work submissions found."
+        }
+
+    processed_count = 0
+    failed_count = 0
+    skipped_count = 0
 
     for msg in messages:
         msg_id = msg['id']
@@ -739,6 +748,7 @@ def check_and_process_emails():
         subject = next((h['value'] for h in headers if h['name'].lower() == 'subject'), '')
 
         if not is_prework_submission_subject(subject):
+            skipped_count += 1
             print(f"[SKIP] Ignoring email with subject: {subject}")
             try:
                 service.users().messages().batchModify(
@@ -768,6 +778,7 @@ def check_and_process_emails():
         found_attachments = extract_attachments(all_parts)
         
         if not found_attachments:
+            failed_count += 1
             print("[VALIDATION FAILED] No structural attachment found in this email.")
             save_to_db("Unknown", candidate_email, "No Attachment Found", 0, "Failed (Missing File)", {})
 
@@ -777,13 +788,13 @@ def check_and_process_emails():
             candidate_name = extract_candidate_name_from_filename(filename)
             
             if not candidate_name:
+                failed_count += 1
                 print(f"[VALIDATION FAILED] Invalid filename structure: {filename}. Logging Failure.")
                 save_to_db("Unknown", candidate_email, filename, 0, "Failed (Invalid Naming)", {})
                 continue
             
             print(f"[VALIDATION PASSED] Candidate Identified: {candidate_name}")
 
-            # Yahan track ko dynamically detect kar rahe hain
             detected_track = detect_track(subject, filename)
             print(f"[TRACK DETECTION] Track identified as: {detected_track.upper()}")
 
@@ -793,7 +804,6 @@ def check_and_process_emails():
             
             file_data = base64.urlsafe_b64decode(attachment['data'].encode('UTF-8'))
             
-            # detected_track variable ko forward_to_ng_skillcheck me pass kiya hai
             evaluation_result = forward_to_ng_skillcheck(file_data, filename, detected_track)
             
             if evaluation_result:
@@ -802,7 +812,9 @@ def check_and_process_emails():
 
                 overall_score = evaluation_result.get('overall_score', 0)
                 save_to_db(candidate_name, candidate_email, filename, overall_score, "Completed", evaluation_result)
+                processed_count += 1
             else:
+                failed_count += 1
                 save_to_db(candidate_name, candidate_email, filename, 0, "Failed (Processing Error)", {})
         
         try:
@@ -812,6 +824,13 @@ def check_and_process_emails():
             ).execute()
         except Exception as exc:
             print(f"[WARNING] Could not mark processed email as read: {exc}")
+
+    return {
+        "processed": processed_count,
+        "failed": failed_count,
+        "skipped": skipped_count,
+        "message": f"Processed {processed_count} submission(s)."
+    }
 
 if __name__ == "__main__":
     print("[START] Starting Candidate Email Monitoring Service...")
