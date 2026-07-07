@@ -1459,6 +1459,13 @@ function getSubmissionTrack(submission) {
   ).toString().toLowerCase();
 }
 
+function getSubmissionRoleLabel(submission) {
+  const track = getSubmissionTrack(submission);
+  if (track === 'ml') return 'ML Engineer';
+  if (track === 'fullstack') return 'Full Stack';
+  return 'AI Engineer';
+}
+
 function getPayloadTrack(payload, submission) {
   return (
     parseRawResponseTrack(payload) ||
@@ -1483,6 +1490,9 @@ export default function Dashboard({ data, onReset, onTryAgain, type, uploadData,
   const [isProcessingEmails, setIsProcessingEmails] = useState(false);
   const [processingMessage, setProcessingMessage] = useState('');
   const [toast, setToast] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [roleFilter, setRoleFilter] = useState('all');
+  const [dateFilter, setDateFilter] = useState('all');
   
   const [selectedEvaluation, setSelectedEvaluation] = useState(data || null);
   const [activeReportMeta, setActiveReportMeta] = useState({ 
@@ -1625,6 +1635,34 @@ export default function Dashboard({ data, onReset, onTryAgain, type, uploadData,
   const reportTitle = buildReportTitle(activeReportMeta.type, activeReportMeta.uploadData, activeReportMeta.candidateEmail);
   const trackLabel = formatTrackLabel(activeReportMeta.track);
 
+  const filteredSubmissions = emailSubmissions.filter((sub) => {
+    const roleLabel = getSubmissionRoleLabel(sub).toLowerCase();
+    const candidateName = extractNameFromEmail(sub.candidate_email).toLowerCase();
+    const email = (sub.candidate_email || '').toLowerCase();
+    const submissionDate = new Date(sub.submission_date);
+    const formattedDate = submissionDate.toLocaleDateString('en-IN').toLowerCase();
+    const scoreText = (sub.overall_score || '').toString().toLowerCase();
+    const searchableText = [candidateName, roleLabel, email, formattedDate, scoreText, sub.file_name || '', sub.status || '']
+      .join(' ');
+
+    const matchesSearch = !searchTerm || searchableText.includes(searchTerm.toLowerCase());
+
+    const matchesRole = roleFilter === 'all' || roleLabel.toLowerCase() === roleFilter.toLowerCase();
+
+    let matchesDate = true;
+    if (dateFilter !== 'all' && submissionDate instanceof Date && !Number.isNaN(submissionDate.getTime())) {
+      const now = new Date();
+      const diffHours = (now.getTime() - submissionDate.getTime()) / (1000 * 60 * 60);
+      if (dateFilter === '24h') matchesDate = diffHours <= 24;
+      if (dateFilter === '3d') matchesDate = diffHours <= 72;
+      if (dateFilter === '7d') matchesDate = diffHours <= 168;
+    } else if (dateFilter !== 'all') {
+      matchesDate = false;
+    }
+
+    return matchesSearch && matchesRole && matchesDate;
+  });
+
   const handleDownloadReport = () => {
     const originalTitle = document.title;
     document.title = `SkillCheck_${trackLabel.replace(/\s+/g, '_')}_${reportTitle.replace(/\s+/g, '_')}_${score}_Score`;
@@ -1686,8 +1724,48 @@ export default function Dashboard({ data, onReset, onTryAgain, type, uploadData,
               No email submissions scanned yet. Send an email with subject 'Pre-Work Submission' to parse live data.
             </div>
           ) : (
-            <div className="bg-[#0b0f19]/60 border border-white/[0.06] rounded-xl overflow-x-auto shadow-2xl w-full">
-              <table className="w-full text-xs text-slate-300 border-collapse table-auto min-w-[900px]">
+            <div className="space-y-3">
+              <div className="flex flex-col gap-3 rounded-xl border border-white/[0.06] bg-[#0b0f19]/50 p-3 md:flex-row md:items-center md:justify-between">
+                <div className="flex flex-1 flex-col gap-2 md:flex-row md:items-center">
+                  <input
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    placeholder="Search by name, role, mail, date, score..."
+                    className="w-full rounded-lg border border-white/[0.08] bg-[#0b0f19]/80 px-3 py-2 text-sm text-slate-200 outline-none placeholder:text-slate-500 md:max-w-xs"
+                  />
+                  <select
+                    value={roleFilter}
+                    onChange={(e) => setRoleFilter(e.target.value)}
+                    className="rounded-lg border border-white/[0.08] bg-[#0b0f19]/80 px-3 py-2 text-sm text-slate-200 outline-none"
+                  >
+                    <option value="all">All Roles</option>
+                    <option value="AI Engineer">AI Engineer</option>
+                    <option value="ML Engineer">ML Engineer</option>
+                    <option value="Full Stack">Full Stack</option>
+                  </select>
+                  <select
+                    value={dateFilter}
+                    onChange={(e) => setDateFilter(e.target.value)}
+                    className="rounded-lg border border-white/[0.08] bg-[#0b0f19]/80 px-3 py-2 text-sm text-slate-200 outline-none"
+                  >
+                    <option value="all">All Dates</option>
+                    <option value="24h">Last 24 Hours</option>
+                    <option value="3d">Last 3 Days</option>
+                    <option value="7d">Last 7 Days</option>
+                  </select>
+                </div>
+                <div className="text-sm text-slate-400">
+                  Showing {filteredSubmissions.length} of {emailSubmissions.length} submissions
+                </div>
+              </div>
+
+              <div className="bg-[#0b0f19]/60 border border-white/[0.06] rounded-xl overflow-x-auto shadow-2xl w-full">
+                {filteredSubmissions.length === 0 ? (
+                  <div className="p-10 text-center text-sm text-slate-500">
+                    No submissions match the current filters.
+                  </div>
+                ) : (
+                  <table className="w-full text-xs text-slate-300 border-collapse table-auto min-w-[900px]">
                 <thead className="bg-white/5 text-slate-400 uppercase tracking-wider font-semibold border-b border-white/[0.06]">
                   <tr>
                     <th className="p-4 text-left">Candidate</th>
@@ -1700,7 +1778,7 @@ export default function Dashboard({ data, onReset, onTryAgain, type, uploadData,
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/[0.04]">
-                  {emailSubmissions.map((sub) => (
+                  {filteredSubmissions.map((sub) => (
                     <tr key={sub.id} className="hover:bg-white/[0.02] transition-colors">
                       {/* Fixed: Extracting cleanly mapped name string directly from candidate email address */}
                       <td className="p-4 font-semibold text-white text-sm">
@@ -1739,7 +1817,9 @@ export default function Dashboard({ data, onReset, onTryAgain, type, uploadData,
                     </tr>
                   ))}
                 </tbody>
-              </table>
+                  </table>
+                )}
+              </div>
             </div>
           )}
         </div>

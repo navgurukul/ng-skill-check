@@ -656,14 +656,6 @@ def save_to_db(name, email, filename, score, status, raw_data):
         cur = conn.cursor()
         
         json_string = json.dumps(raw_data) if isinstance(raw_data, dict) else raw_data
-        
-        cur.execute("""
-            SELECT setval(
-                pg_get_serial_sequence('candidate_submissions', 'id'),
-                COALESCE((SELECT MAX(id) FROM candidate_submissions), 0),
-                true
-            )
-        """)
 
         query = """
             INSERT INTO candidate_submissions (candidate_name, candidate_email, file_name, overall_score, status, raw_response)
