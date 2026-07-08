@@ -1504,7 +1504,16 @@ export default function Dashboard({ data, onReset, onTryAgain, type, uploadData,
   
   const [viewMode, setViewMode] = useState(data ? 'report' : 'list');
 
-  const BASE_URL = import.meta.env.NG_API_URL || window.location.origin;
+  const getApiBaseUrl = () => {
+    const envUrl = import.meta.env.VITE_API_URL || import.meta.env.NG_API_URL;
+    if (envUrl) return envUrl;
+    if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+      return 'http://localhost:8000';
+    }
+    return window.location.origin;
+  };
+
+  const BASE_URL = getApiBaseUrl();
 
   const fetchEmailSubmissions = async () => {
     try {
