@@ -73,6 +73,15 @@ export default function ProcessingView({ track, type, uploadData, onComplete }) 
           throw new Error(`Missing required data: track=${!!track}, type=${!!type}, uploadData=${!!uploadData}`);
         }
 
+        const getApiBaseUrl = () => {
+          const envUrl = import.meta.env.VITE_API_URL || import.meta.env.NG_API_URL;
+          if (envUrl) return envUrl;
+          if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+            return 'http://localhost:8000';
+          }
+          return window.location.origin;
+        };
+
         console.log('[STEP 1] Creating FormData object');
         const formData = new FormData();
         formData.append("track", track);
@@ -89,9 +98,7 @@ export default function ProcessingView({ track, type, uploadData, onComplete }) 
           formData.append("file", uploadData.file);
         }
 
-        // updated url 
-
-        const BASE_URL = import.meta.env.VITE_API_URL;
+        const BASE_URL = getApiBaseUrl();
 
         console.log('[STEP 3] Sending request to backend...');
         const response = await fetch(`${BASE_URL}/api/evaluate`, {
