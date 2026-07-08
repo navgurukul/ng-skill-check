@@ -1504,7 +1504,7 @@ export default function Dashboard({ data, onReset, onTryAgain, type, uploadData,
   
   const [viewMode, setViewMode] = useState(data ? 'report' : 'list');
 
-  const BASE_URL = import.meta.env.API_API_URL || window.location.origin;
+  const BASE_URL = import.meta.env.VITE_API_URL || window.location.origin;
 
   const fetchEmailSubmissions = async () => {
     try {
