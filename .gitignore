@@ -3,6 +3,8 @@
 .env.local
 .env.*.local
 
+venv/
+
 # Backend - Python
 backend/venv/
 backend/env/
