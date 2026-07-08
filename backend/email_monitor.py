@@ -533,7 +533,7 @@ CREDENTIALS_PATH = os.path.join(BASE_DIR, 'credentials.json')
 SCOPES = ['https://www.googleapis.com/auth/gmail.modify']
 
 # Agar NG_API_URL env me nahi milti toh fallback local URL par rahega
-NG_API_URL = os.getenv("VITE_API_URL", "http://localhost:8000/api/evaluate")
+NG_API_URL = os.getenv("NG_API_URL", os.getenv("VITE_API_URL", "http://localhost:8000/api/evaluate"))
 
 def get_db_connection():
     """Establishes database connection using environment variables."""
