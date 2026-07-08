@@ -559,7 +559,11 @@ app = FastAPI(title="NG SkillCheck Clean AI Engine - Optimized")
 # Bulletproof CORS Configurations
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Set to "*" to eliminate any frontend port block variations during dev
+    allow_origins=[
+        "http://localhost:5173",
+        "https://dev.dtaell0zoz93v.amplifyapp.com/",
+        "https://main.dtaell0zoz93v.amplifyapp.com"  
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
