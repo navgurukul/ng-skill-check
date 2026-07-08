@@ -1504,10 +1504,12 @@ export default function Dashboard({ data, onReset, onTryAgain, type, uploadData,
   
   const [viewMode, setViewMode] = useState(data ? 'report' : 'list');
 
+  const BASE_URL = import.meta.env.NG_API_URL || window.location.origin;
+
   const fetchEmailSubmissions = async () => {
     try {
       setDbLoading(true);
-      const res = await fetch('http://localhost:8000/api/email-submissions');
+      const res = await fetch(`${BASE_URL}/api/email-submissions`);
       if (!res.ok) throw new Error('Database network failure');
       const logs = await res.json();
       setEmailSubmissions(logs);
@@ -1535,7 +1537,7 @@ export default function Dashboard({ data, onReset, onTryAgain, type, uploadData,
     setToast(null);
 
     try {
-      const res = await fetch('http://localhost:8000/api/process-emails', { method: 'POST' });
+      const res = await fetch(`${BASE_URL}/api/process-emails`, { method: 'POST' });
       const payload = await res.json();
       if (!res.ok) throw new Error(payload.detail || 'Email processing failed');
       setProcessingMessage(payload.message || 'Processing complete.');
