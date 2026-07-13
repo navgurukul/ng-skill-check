@@ -1384,7 +1384,7 @@
 import React, { useEffect, useState } from 'react';
 import { 
   Download, RefreshCw, ArrowLeft, CheckCircle2, 
-  AlertTriangle, TrendingUp, Target, Mail, Loader, CheckCircle, XCircle, X
+  AlertTriangle, TrendingUp, Target, Mail, Loader, CheckCircle, XCircle, X, Trash2
 } from 'lucide-react';
 
 function toTitleCase(value) {
@@ -1564,6 +1564,30 @@ export default function Dashboard({ data, onReset, onTryAgain, type, uploadData,
       });
     } finally {
       setIsProcessingEmails(false);
+    }
+  };
+
+  const handleDeleteSubmission = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this submission?")) {
+      return;
+    }
+    try {
+      const res = await fetch(`${BASE_URL}/api/email-submissions/${id}`, {
+        method: 'DELETE'
+      });
+      const payload = await res.json();
+      if (!res.ok) throw new Error(payload.detail || 'Failed to delete submission');
+      setToast({
+        type: 'success',
+        message: 'Submission deleted successfully.'
+      });
+      await fetchEmailSubmissions();
+    } catch (err) {
+      console.error('Failed to delete submission:', err);
+      setToast({
+        type: 'error',
+        message: err.message || 'Unable to delete submission.'
+      });
     }
   };
 
@@ -1808,22 +1832,31 @@ export default function Dashboard({ data, onReset, onTryAgain, type, uploadData,
                         {sub.status === 'Completed' ? `${sub.overall_score}` : '—'}
                       </td>
                       <td className="p-4">
-                        {sub.status === 'Completed' ? (
-                          <button 
-                            onClick={() => handleSelectEmailReport(sub)}
-                            className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-lg cursor-pointer transition-all shadow-md shadow-indigo-600/10 text-xs"
+                        <div className="flex items-center gap-2">
+                          {sub.status === 'Completed' ? (
+                            <button 
+                              onClick={() => handleSelectEmailReport(sub)}
+                              className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-lg cursor-pointer transition-all shadow-md shadow-indigo-600/10 text-xs"
+                            >
+                              <CheckCircle className="w-4 h-4" /> View Report
+                            </button>
+                          ) : sub.status.includes('Failed') ? (
+                            <span className="flex items-center gap-1 text-red-400 font-semibold px-2 text-xs">
+                              <XCircle className="w-4 h-4" /> Error Logged
+                            </span>
+                          ) : (
+                            <span className="flex items-center gap-1 text-amber-400 font-semibold animate-pulse px-2 text-xs">
+                              <Loader className="w-4 h-4 animate-spin" /> Evaluating
+                            </span>
+                          )}
+                          <button
+                            onClick={() => handleDeleteSubmission(sub.id)}
+                            className="flex items-center gap-1 px-2.5 py-1.5 bg-red-500/10 hover:bg-red-600 text-red-400 hover:text-white border border-red-500/20 hover:border-red-600 font-bold rounded-lg cursor-pointer transition-all text-xs"
+                            title="Delete this submission"
                           >
-                            <CheckCircle className="w-4 h-4" /> View Report
+                            <Trash2 className="w-3.5 h-3.5" /> Delete
                           </button>
-                        ) : sub.status.includes('Failed') ? (
-                          <span className="flex items-center gap-1 text-red-400 font-semibold px-2">
-                            <XCircle className="w-4 h-4" /> Error Logged
-                          </span>
-                        ) : (
-                          <span className="flex items-center gap-1 text-amber-400 font-semibold animate-pulse px-2">
-                            <Loader className="w-4 h-4 animate-spin" /> Evaluating
-                          </span>
-                        )}
+                        </div>
                       </td>
                     </tr>
                   ))}

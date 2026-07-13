@@ -803,6 +803,20 @@ def get_email_submissions():
         print(f"[API CORE ERROR] Failed database fetch transaction: {e}")
         raise HTTPException(status_code=500, detail="Database log indexing query operation failed.")
 
+@app.delete("/api/email-submissions/{submission_id}")
+def delete_submission(submission_id: int):
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("DELETE FROM candidate_submissions WHERE id = %s", (submission_id,))
+        conn.commit()
+        cur.close()
+        conn.close()
+        return {"success": True, "message": f"Submission {submission_id} deleted successfully."}
+    except Exception as e:
+        print(f"[API CORE ERROR] Failed to delete submission: {e}")
+        raise HTTPException(status_code=500, detail="Database delete transaction failed.")
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
